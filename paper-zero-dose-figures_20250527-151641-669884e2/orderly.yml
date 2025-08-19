@@ -1,0 +1,55 @@
+requester: VIMC
+author: Anna-Maria 
+displayname: >-
+   Vaccine Impact of Reaching the Zero-dose Children Figures
+data: ~
+
+connection: 
+  con: source
+
+
+script: script.R
+
+sources: 
+  - R/util.R  
+
+resources:
+  - report.Rmd
+
+global_resources:
+  R/get_annex_2023.R: get_annex_2023.R
+  R/disease_palette.R: disease_palette.R
+  
+packages: 
+  - dplyr
+  - vimpact
+  - tidyr
+  - kableExtra
+  - rnaturalearth
+  - rnaturalearthdata
+  - ggplot2
+  - sf
+  - patchwork
+  - MetBrewer
+
+artefacts:
+  - report:
+      description: cover page
+      filenames:
+        - report.html
+  - staticgraph:
+      description: Final figures for paper
+      filenames: 
+        - figures/map_prop-1.png
+        - figures/map_abs-1.png
+        - figures/who_bubble-1.png
+        - figures/vaccine_bubble-1.png
+        - figures/prop2_sq2-1.png
+        - figures/abs2_sq2-1.png
+
+depends:
+   paper-zero-dose-target:
+      id: latest
+      use:
+        data.rds: zero-dose-target.rds
+

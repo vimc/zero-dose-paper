@@ -1,0 +1,374 @@
+---
+title: "Zero-dose figures and tables"
+author: "VIMC"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, 
+                      out.width = "100%",
+                      message = FALSE, 
+                      warning = FALSE, 
+                      fig.ext = c("png"),
+                      dpi = 300,
+                      fig.path = "figures/")
+options(dplyr.summarise.inform = FALSE)
+```
+
+## README
+This report generates figures and tables based on the zero-dose target scenarios.
+
+```{r load data}
+imp <- readRDS("data.rds")
+
+country_impact <- imp %>% 
+  filter(year > 2023) %>%
+  group_by(scenario, modelling_group, country) %>%
+  summarise(deaths_averted = sum(deaths_averted), .groups = "keep") %>%
+  ungroup() %>%
+  group_by(scenario, country) %>%
+  summarise(deaths_averted = round(mean(deaths_averted), 2), .groups = "keep")
+
+
+country_impact <- country_impact %>%
+  tidyr::pivot_wider( names_from = scenario,
+                      values_from = deaths_averted) 
+
+  impact_vals <- country_impact %>%
+  mutate(prop2_sq2 = prop2 - sq2, 
+         abs2_sq2 = abs2 - sq2) %>%
+  select(country, prop2_sq2, abs2_sq2) 
+  
+  
+imp2 <-add_country_metadata(imp)
+
+impact_vax <- imp2 %>% filter(year > 2023) %>% group_by(year, scenario, modelling_group, vaccine) %>%
+  summarise(deaths_averted = sum(deaths_averted), .groups = "keep") %>%
+  ungroup() %>%
+  group_by(scenario, year, vaccine) %>%
+  summarise(deaths_averted = round(mean(deaths_averted), 2), .groups = "keep")
+
+impact_vax <- impact_vax %>%
+  tidyr::pivot_wider( names_from = scenario,
+                      values_from = deaths_averted) %>%
+  mutate(prop2_per = ((prop2 - sq2)/sq2)*100, 
+         abs2_per = ((abs2 - sq2)/sq2)*100) 
+
+impact_vax$year <- as.numeric(impact_vax$year)
+
+region_impact <- imp2 %>% filter(year > 2023) %>% group_by(scenario, modelling_group, who_region, vaccine, year) %>%
+  summarise(deaths_averted = sum(deaths_averted), .groups = "keep") %>%
+  ungroup() %>%
+  group_by(scenario, who_region, vaccine, year) %>%
+  summarise(deaths_averted = mean(deaths_averted), .groups = "keep") %>%
+  ungroup() %>%
+  group_by(scenario, who_region, year) %>%
+  summarise(deaths_averted =  round(sum(deaths_averted), 2))
+
+region_impact <- region_impact %>%
+  tidyr::pivot_wider( names_from = scenario,
+                      values_from = deaths_averted) %>%
+  mutate(prop2_per = ((prop2 - sq2)/sq2)*100, 
+         abs2_per = ((abs2 - sq2)/sq2)*100) 
+
+region_impact$year <- as.numeric(region_impact$year)
+
+region_impact_vax <- imp2 %>% filter(year > 2023) %>% group_by(scenario, modelling_group, who_region, vaccine) %>%
+  summarise(deaths_averted = sum(deaths_averted), .groups = "keep") %>%
+  ungroup() %>%
+  group_by(scenario, who_region, vaccine) %>%
+  summarise(deaths_averted = round(mean(deaths_averted), 2), .groups = "keep")
+```
+
+#Tables {.tabset}
+
+## Status Quo Deaths Averted
+
+```{r sq_table}
+x <- region_impact_vax %>% filter(scenario == "sq2") %>% ungroup()%>%
+  select(who_region, deaths_averted, vaccine) %>%
+  tidyr::pivot_wider( names_from = who_region,
+                      values_from = deaths_averted) 
+
+x <- bind_rows(x,
+                x %>% ungroup() %>%
+                  summarise(across(where(is.numeric), ~sum(.x, na.rm = TRUE))) %>%
+                 mutate(vaccine = "All"))
+
+x <- x %>% ungroup() %>%
+  mutate(Total = rowSums(select(., where(is.numeric)), na.rm = TRUE))
+
+x_formatted <- x %>%
+  mutate(across(where(is.numeric), ~ format(.x, big.mark = ",", scientific = FALSE)))
+
+kable(x_formatted, format = "markdown", caption = "Deaths averted in status-quo")
+```
+
+## Base deaths averted
+
+```{r base_table}
+x <- region_impact_vax %>% filter(scenario == "base") %>% ungroup()%>%
+  select(who_region, deaths_averted, vaccine) %>%
+  tidyr::pivot_wider( names_from = who_region,
+                      values_from = deaths_averted) 
+
+x <- bind_rows(x,
+                x %>% ungroup() %>%
+                  summarise(across(where(is.numeric), ~sum(.x, na.rm = TRUE))) %>%
+                 mutate(vaccine = "All"))
+
+x <- x %>% ungroup() %>%
+  mutate(Total = rowSums(select(., where(is.numeric)), na.rm = TRUE))
+
+x_formatted <- x %>%
+  mutate(across(where(is.numeric), ~ format(.x, big.mark = ",", scientific = FALSE)))
+
+kable(x_formatted, format = "markdown", caption = "Deaths averted in base")
+```
+
+## Abs2 deaths averted
+
+```{r abs2_table}
+x <- region_impact_vax %>% filter(scenario == "abs2") %>% ungroup()%>%
+  select(who_region, deaths_averted, vaccine) %>%
+  tidyr::pivot_wider( names_from = who_region,
+                      values_from = deaths_averted) 
+
+x <- bind_rows(x,
+                x %>% ungroup() %>%
+                  summarise(across(where(is.numeric), ~sum(.x, na.rm = TRUE))) %>%
+                 mutate(vaccine = "All"))
+
+x <- x %>% ungroup() %>%
+  mutate(Total = rowSums(select(., where(is.numeric)), na.rm = TRUE))
+
+x_formatted <- x %>%
+  mutate(across(where(is.numeric), ~ format(.x, big.mark = ",", scientific = FALSE)))
+
+kable(x_formatted, format = "markdown", caption = "Deaths averted in abs2")
+```
+
+
+
+## Prop2 Deaths Averted
+
+```{r prop_table}
+x <- region_impact_vax %>% filter(scenario == "prop2") %>% ungroup()%>%
+  select(who_region, deaths_averted, vaccine) %>%
+  tidyr::pivot_wider( names_from = who_region,
+                      values_from = deaths_averted) 
+
+x <- bind_rows(x,
+                x %>% ungroup() %>%
+                  summarise(across(where(is.numeric), ~sum(.x, na.rm = TRUE))) %>%
+                 mutate(vaccine = "All"))
+
+
+x <- x %>% ungroup() %>%
+  mutate(Total = rowSums(select(., where(is.numeric)), na.rm = TRUE))
+
+x_formatted <- x %>%
+  mutate(across(where(is.numeric), ~ format(.x, big.mark = ",", scientific = FALSE)))
+
+kable(x_formatted, format = "markdown", caption = "Deaths averted in proportional scenario")
+```
+
+## Difference in Deaths Averted
+
+```{r diff_table}
+x <- region_impact_vax %>%
+  filter(scenario %in% c("prop2", "sq2")) %>%
+  select(who_region, deaths_averted, vaccine, scenario) %>%
+  tidyr::pivot_wider(names_from = scenario, values_from = deaths_averted) %>%
+  mutate(deaths_diff = prop2 - sq2) %>%
+  select(who_region, deaths_diff, vaccine) %>%
+  tidyr::pivot_wider(names_from = who_region, values_from = deaths_diff)
+
+
+x <- bind_rows(x,
+                x %>% ungroup() %>%
+                  summarise(across(where(is.numeric), ~sum(.x, na.rm = TRUE))) %>%
+                 mutate(vaccine = "All"))
+x <- x %>% ungroup() %>%
+  mutate(Total = rowSums(select(., where(is.numeric)), na.rm = TRUE))
+
+x_formatted <- x %>%
+  mutate(across(where(is.numeric), ~ format(.x, big.mark = ",", scientific = FALSE)))
+
+kable(x_formatted, format = "markdown", caption = "Difference in deaths averted between prop2 and sq2")
+```
+
+# Figures {.tabset}
+
+##Map Prop2-Sq2
+
+```{r map_prop}
+world <- ne_countries(scale = "medium", returnclass = "sf")
+impact_vals$iso_a3 <- impact_vals$country
+
+# Merge your data with world map based on iso_a3 code
+world_data <- world %>%
+  left_join(impact_vals, by = "iso_a3")%>%
+  mutate(prop2_sq2_offset = prop2_sq2 + 0.001, 
+         abs2_sq2_offset = abs2_sq2 + 0.001)
+
+top10_countries_prop <- world_data %>%
+  st_drop_geometry() %>%  
+  arrange(desc(prop2_sq2)) %>%
+  slice_head(n = 10)%>%
+  select(country, prop2_sq2)
+
+# Plot
+ggplot(data = world_data) +
+  geom_sf(aes(fill = prop2_sq2_offset)) +
+  theme_minimal() +
+  labs(fill = "",
+       #title = "Proportional Impact Compared to Status-Quo",
+       caption = "Grey countries have no data") + 
+  MetBrewer::scale_fill_met_c("Benedictus")
+
+kable(top10_countries_prop, format = "markdown", caption = "")
+```
+
+##Map Abs2-Sq2
+```{r map_abs}
+top10_countries_abs <- world_data %>%
+  st_drop_geometry() %>%  # drop the spatial part to make it easier
+  arrange(desc(abs2_sq2)) %>%
+  slice_head(n = 10)%>%
+  select(country, abs2_sq2)
+
+# Plot
+ggplot(data = world_data) +
+  geom_sf(aes(fill = abs2_sq2_offset)) +
+  theme_minimal() +
+  labs(fill = "Deaths Averted",
+       #title = "Absolute Impact Compared to Status-Quo",
+       caption = "Grey countries have no data")+ 
+  MetBrewer::scale_fill_met_c("Benedictus")
+
+kable(top10_countries_abs, format = "markdown", caption = "")
+```
+
+##WHO Bubble Plot
+```{r who_bubble}
+x <- region_impact_vax %>% 
+  tidyr::pivot_wider(names_from = scenario, values_from = deaths_averted)
+
+a <- ggplot(x, aes(x = prop2-sq2, y = who_region)) +
+  geom_point(aes(fill = vaccine), shape = 21, alpha = 0.8, size = 6) +
+  theme_minimal(base_size = 12) +
+  scale_fill_manual(values= vaccine_palette(unique(x$vaccine))$pal)+
+  labs(
+    x = "Difference in Deaths Averted from Status-Quo",
+    fill = "", 
+    y = ""
+  ) + 
+  theme(legend.position = "bottom") + 
+  theme(
+  legend.text = element_text(size = 8),   # size of the labels
+  legend.title = element_text(size = 8)   # optional: size of the legend title
+)
+
+a
+
+```
+
+## Vaccine Bubble plot
+```{r vaccine_bubble}
+x <- region_impact_vax %>% 
+  tidyr::pivot_wider(names_from = scenario, values_from = deaths_averted)
+
+x <- x %>%
+  mutate(deaths_diff = prop2 - sq2)
+
+a <- ggplot(x, aes(x = deaths_diff, y = vaccine)) +
+  geom_point(aes(fill = who_region), shape = 21, alpha = 0.8, size = 6) +
+  theme_minimal(base_size = 12) +
+  scale_fill_manual(values = who_palette(unique(x$who_region))$pal) +
+  labs(
+    x = "Difference in Deaths Averted from Status-Quo",
+    fill = "", 
+    y = ""
+  ) + 
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 8)
+  )
+
+a
+
+```
+
+
+## Prop2 Difference Plots: Vaccine and WHO Region 
+```{r prop2_sq2}
+b <- ggplot(impact_vax, aes(x = year, y = prop2_per, color = vaccine, group = vaccine)) +
+  geom_line(size = 1.2) +
+  theme_minimal(base_size = 10)  +
+  scale_color_manual(values= vaccine_palette(unique(impact_vax$vaccine))$pal)+
+  labs(
+    title = "",
+    subtitle = "",
+    y = "Percent Increase in Deaths Averted",
+    x = "Year",
+    color = "Vaccine"
+  ) + 
+  #ggtitle("Proportional Reduction Compared to Status-Quo")+
+  theme(legend.position = "bottom")
+
+
+a <- ggplot(region_impact, aes(x = year, y = (prop2 - sq2), fill = who_region)) +
+  geom_area(stat = "identity", position = "stack") +
+  theme_minimal(base_size = 10) +
+  scale_fill_manual(values= who_palette(unique(region_impact$who_region))$pal)+
+  labs(
+    title = "",
+    subtitle = "",
+    x = "Year",
+    y = "Deaths Averted",
+    fill = "WHO region"
+  ) + theme(legend.position = "bottom")
+  
+
+wrap_elements(b) + wrap_elements(a)
+
+```
+
+## Abs2 Difference Plots: Vaccine and WHO Region 
+```{r abs2_sq2}
+b <- ggplot(impact_vax, aes(x = year, y = abs2_per, color = vaccine, group = vaccine)) +
+  geom_line(size = 1.2) +
+  theme_minimal(base_size = 10)  +
+  scale_color_manual(values= vaccine_palette(unique(impact_vax$vaccine))$pal)+
+  labs(
+    title = "",
+    subtitle = "",
+    y = "Percent Increase in Deaths Averted",
+    x = "Year",
+    color = "Vaccine"
+  ) + 
+  #ggtitle("Absolute Reduction Compared to Status-Quo")+
+  theme(legend.position = "bottom")
+
+
+a <- ggplot(region_impact, aes(x = year, y = (abs2 - sq2), fill = who_region)) +
+  geom_area(stat = "identity", position = "stack") +
+  theme_minimal(base_size = 10) +
+  scale_fill_manual(values= who_palette(unique(region_impact$who_region))$pal)+
+  labs(
+    title = "",
+    subtitle = "",
+    x = "Year",
+    y = "Deaths Averted",
+    fill = "WHO region"
+  ) + theme(legend.position = "bottom")
+  
+
+wrap_elements(b) + wrap_elements(a)
+
+```
+
+
